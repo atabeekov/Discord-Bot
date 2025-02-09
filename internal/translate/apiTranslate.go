@@ -2,24 +2,29 @@ package translate
 
 import (
 	"fmt"
-	"google.golang.org/api/translate/v2"
+
+	"github.com/bregydoc/gtranslate"
+	"golang.org/x/text/language"
 )
 
-type Translator struct {
-	client *translate.Translator
-}
+type Translator struct{}
 
-// NewTranslator initializes the go-free-translate client
-func NewTranslator() (*Translator, error) {
-	client := translate.New()
-	return &Translator{client: client}, nil
+// NewTranslator initializes the translator
+func NewTranslator() *Translator {
+	return &Translator{}
 }
 
 // TranslateText translates the given text into the target language
 func (t *Translator) TranslateText(text, targetLang string) (string, error) {
-	translation, err := t.client.Translate(text, "auto", targetLang)
+	destLang, err := language.Parse(targetLang)
+	if err != nil {
+		return "", fmt.Errorf("invalid target language: %v", err)
+	}
+
+	translatedText, err := gtranslate.Translate(text, language.English, destLang)
 	if err != nil {
 		return "", fmt.Errorf("translation error: %v", err)
 	}
-	return translation, nil
+
+	return translatedText, nil
 }

@@ -3,7 +3,7 @@ package stream
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -40,8 +40,7 @@ func GetRecentChanges() (string, error) {
 		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// Parse the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %v", err)
 	}
@@ -52,7 +51,6 @@ func GetRecentChanges() (string, error) {
 		return "", fmt.Errorf("failed to parse JSON response: %v", err)
 	}
 
-	// Format the result
 	result := "Recent changes:\n"
 	for _, change := range apiResponse.Query.RecentChanges {
 		result += fmt.Sprintf("- Title: %s, User: %s\n", change.Title, change.User)
@@ -71,6 +69,6 @@ func PollRecentChanges(callback func(string)) {
 		} else {
 			callback(changes) // Pass data to the bot
 		}
-		time.Sleep(10 * time.Minute) // Adjust polling interval as needed
+		time.Sleep(10 * time.Minute)
 	}
 }

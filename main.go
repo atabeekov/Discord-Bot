@@ -1,20 +1,19 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"wikibot/internal/translate"
 
+	"github.com/joho/godotenv"
 	"wikibot/internal/discord"
 	"wikibot/internal/storage"
 	"wikibot/internal/stream"
+	"wikibot/internal/translate"
 )
 
 func main() {
-	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables")
 	}
@@ -23,21 +22,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error initializing database: %v", err)
 	}
-
-	if db != nil {
-		defer db.Close() // Только если db успешно инициализирована
-	}
+	defer db.Close()
 
 	token := os.Getenv("DISCORD_TOKEN")
 	if token == "" {
 		log.Fatal("Missing DISCORD_TOKEN environment variable")
 	}
 
-	translator, err := translate.NewTranslator()
-	if err != nil {
-		log.Fatalf("Failed to initialize translator: %v", err)
-	}
-	defer translator.Close() // Закрываем переводчик при завершении программы
+	translator := translate.NewTranslator()
 
 	bot, err := discord.NewBot(token, db, translator)
 	if err != nil {
@@ -47,12 +39,16 @@ func main() {
 	go bot.Start()
 	defer bot.Stop()
 
-	// Start the Wikipedia stream
 	go stream.PollRecentChanges(func(changes string) {
-		bot.SendMessage("912731302040600588", changes)
+		translated, err := translator.TranslateText(changes, "ru")
+		if err != nil {
+			log.Printf("Translation error: %v", err)
+			bot.SendMessage("912731302040600588", changes)
+		} else {
+			bot.SendMessage("912731302040600588", translated)
+		}
 	})
 
-	// Graceful shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
